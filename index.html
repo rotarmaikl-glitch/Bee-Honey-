@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#ffca59">
+<title>🐝 Медовый сад 5.6</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;text-align:center;font-family:Georgia,serif;
+ color:#51300c;min-height:100vh;
+ background:linear-gradient(135deg,#fff6d5,#ffe49b,#d9f2b4,#c9eaff);
+}
+header{background:#ffca59;padding:12px;border-bottom:5px solid #e9a32d}
+h1{font-size:clamp(25px,5vw,36px)}
+.screen{padding:12px;max-width:850px;margin:auto}
+.hidden{display:none!important}
+button{
+ background:#ffca59;color:#402000;border:2px solid #d9952d;
+ border-radius:15px;padding:12px 15px;margin:6px;
+ font-size:15px;font-weight:bold;cursor:pointer;
+ touch-action:manipulation;
+}
+button:disabled{opacity:.4}
+.card{background:#fffaf0;border:3px solid #f4ca67;
+ border-radius:23px;padding:18px;margin:12px auto}
+.bee{font-size:65px;animation:fly 3s infinite alternate}
+@keyframes fly{to{transform:translateY(-10px) rotate(7deg)}}
+.stats{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:12px}
+.stat{background:#fff1c5;border-radius:15px;padding:10px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.item{background:#fff1c5;border:2px solid #efc45c;border-radius:17px;padding:13px;margin:9px auto}
+.answer{display:block;width:min(100%,400px);margin:10px auto}
+.hive{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.slot{background:#fff1c5;border:2px dashed #d9952d;border-radius:15px;padding:15px;min-height:75px;font-size:30px}
+input{padding:12px;border-radius:12px;border:2px solid #e9b84e;font-size:16px;width:90%;max-width:350px}
+footer{padding:20px}
+@media(max-width:420px){
+ .grid{grid-template-columns:1fr}
+ button{padding:12px 10px}
+ .card{padding:12px}
+}
+</style>
+</head>
+<body>
+<header>
+<h1>🐝 Медовый сад 5.6 🍯</h1>
+<p>HONEY GARDEN — Мир пчёл!</p>
+</header>
+
+<div class="stats">
+<div class="stat">⭐ <span id="stars">0</span></div>
+<div class="stat">🍯 <span id="honey">0</span></div>
+<div class="stat">🪙 <span id="coins">100</span></div>
+</div>
+
+<section id="menu" class="screen">
+<div class="card">
+<div class="bee">🐝</div>
+<h2>Добро пожаловать!</h2>
+<p>Исследуй миры, собирай пчёл и украшай улей!</p>
+<div>🌷 🌻 🐝 🌼 🦋 🌸</div>
+<button onclick="worlds()">🌍 Играть</button>
+<button onclick="shop()">🛒 Магазин</button>
+<button onclick="eggs()">🥚 Яйца</button>
+<button onclick="interior()">🏡 Мой улей</button>
+<button onclick="factory()">🏭 Фабрика</button>
+<button onclick="gift()">🎁 Подарок дня</button>
+<button onclick="quests()">📅 Задания</button>
+<button onclick="book()">📖 Энциклопедия</button>
+<button onclick="settings()">⚙️ Настройки</button>
+</div>
+</section>
+
+<section id="other" class="screen hidden">
+<div class="card">
+<h2 id="otherTitle"></h2>
+<div id="content"></div>
+<button onclick="home()">🏡 Меню</button>
+</div>
+</section>
+
+<section id="game" class="screen hidden">
+<div class="card">
+<div class="bee" id="gameBee">🐝</div>
+<h2 id="gameTitle"></h2>
+<p id="gameStory"></p>
+<h3 id="gameQuestion"></h3>
+<div id="gameAnswers"></div>
+<p id="gameFeedback"></p>
+<button onclick="levels()">🗺️ Карта</button>
+<button onclick="home()">🏡 Меню</button>
+</div>
+</section>
+
+<section id="boss" class="screen hidden">
+<div class="card">
+<div class="bee" id="bossEmoji">👑</div>
+<h2 id="bossName"></h2>
+<div id="bossTimer" style="font-size:40px;color:#d44">30</div>
+<h3 id="bossQuestion"></h3>
+<div id="bossAnswers"></div>
+<p id="bossFeedback"></p>
+<button onclick="home()">🏡 Меню</button>
+</div>
+</section>
+
+<footer>💛 Берегите пчёлок и природу! 💛</footer>
+
+<script>
+"use strict";
+
+const DEFAULT={
+ coins:100,honey:0,stars:0,
+ completed:[],skins:["🐝"],selectedSkin:"🐝",
+ furniture:[],placedFurniture:[],
+ openedWorlds:[0],currentWorld:0,
+ eggs:0,queen:1,factory:1,
+ lastGift:"",lastQuest:"",lastWheel:"",
+ usedCodes:[],language:"ru"
+};
+
+let save;
+try{
+ save={...DEFAULT,...JSON.parse(localStorage.getItem("beeSave56")||"{}")};
+}catch(e){save={...DEFAULT};}
+
+["completed","skins","furniture","placedFurniture","openedWorlds","usedCodes"].forEach(k=>{
+ if(!Array.isArray(save[k]))save[k]=[];
+});
+
+function persist(){
+ try{localStorage.setItem("beeSave56",JSON.stringify(save));}
+ catch(e){alert("Не удалось сохранить игру на этом устройстве.");}
+ update();
+}
+
+function update(){
+ document.getElementById("stars").textContent=save.stars;
+ document.getElementById("honey").textContent=save.honey;
+ document.getElementById("coins").textContent=save.coins;
+}
+
+function show(id){
+ document.querySelectorAll(".screen").forEach(x=>x.classList.add("hidden"));
+ document.getElementById(id).classList.remove("hidden");
+}
+
+function home(){stopBoss();show("menu")}
+function page(title,html){
+ show("other");
+ document.getElementById("otherTitle").textContent=title;
+ document.getElementById("content").innerHTML=html;
+}
+
+const worldData=[
+ ["🌸","Цветочный сад",0],
+ ["🌳","Волшебный лес",150],
+ ["⛰️","Медовые горы",300],
+ ["🌙","Лунное озеро",500],
+ ["🌈","Радужный остров",800],
+ ["❄️","Ледяное королевство",1200]
+];
+
+const bosses=[
+ [15,"Страж улья","🛡️"],
+ [25,"Король шершней","🦂"],
+ [35,"Медовый дракон","🐉"],
+ [45,"Тёмная пчела","👻"],
+ [50,"Королева тьмы","👑"]
+];
+
+const questions=[
+ ["Что собирают пчёлы?",["Нектар 🌸","Камни","Песок"],0],
+ ["Из чего строят соты?",["Воск","Стекло","Пластик"],0],
+ ["Что помогает цветам расти?",["Вода 💧","Дым","Пластик"],0],
+ ["Что производят пчёлы?",["Мёд 🍯","Молоко","Сок"],0],
+ ["Кто откладывает яйца?",["Матка 👑","Бабочка","Муравей"],0],
+ ["Что привлекает пчёл?",["Цветы 🌷","Мусор","Шум"],0],
+ ["Где живут пчёлы?",["В улье 🏡","В море","В машине"],0],
+ ["Что нужно беречь?",["Природу 🌳","Мусор","Пластик"],0],
+ ["Что такое опыление?",["Перенос пыльцы","Полёт","Сон"],0],
+ ["Чем питаются личинки?",["Кормом пчёл","Камнями","Листьями"],0]
+];
+
+function done(n){
+ return save.completed.includes(save.currentWorld+"-"+n);
+}
+
+function worlds(){
+ let html='<div class="grid">';
+ worldData.forEach((w,i)=>{
+ const opened=save.openedWorlds.includes(i);
+ html+=`<div class="item"><div class="bee">${w[0]}</div>
+ <b>${w[1]}</b><p>${opened?"Открыт":w[2]+" 🪙"}</p>
+ <button onclick="selectWorld(${i})">${opened?"Играть":"Открыть"}</button></div>`;
+ });
+ page("🌍 Миры",html+"</div>");
+}
+
+function selectWorld(i){
+ if(!save.openedWorlds.includes(i)){
+ if(save.coins<worldData[i][2])return alert("Не хватает монет!");
+ save.coins-=worldData[i][2];
+ save.openedWorlds.push(i);
+ }
+ save.currentWorld=i;
+ persist();levels();
+}
+
+function levels(){
+ let html='<div class="grid">';
+ let unlocked=1;
+ while(unlocked<50&&done(unlocked))unlocked++;
+ for(let i=1;i<=50;i++){
+ const boss=bosses.find(x=>x[0]===i);
+ html+=`<button ${i>unlocked?"disabled":""} onclick="startLevel(${i})">
+ ${boss?"👑 BOSS":"🐝"} ${i} ${done(i)?"⭐":""}</button>`;
+ }
+ page("🗺️ "+worldData[save.currentWorld][1],html+"</div>");
+}
+
+let answered=false,currentLevel=1;
+
+function startLevel(n){
+ currentLevel=n;
+ if(bosses.some(x=>x[0]===n)){startBoss(n);return;}
+ answered=false;
+ const q=questions[(n-1)%questions.length];
+ show("game");
+ document.getElementById("gameBee").textContent=save.selectedSkin;
+ document.getElementById("gameTitle").textContent="🐝 Уровень "+n;
+ document.getElementById("gameStory").textContent=worldData[save.currentWorld][1];
+ document.getElementById("gameQuestion").textContent=q[0];
+ document.getElementById("gameFeedback").textContent="";
+ const box=document.getElementById("gameAnswers");
+ box.innerHTML="";
+ q[1].map((v,i)=>({v,i})).sort(()=>Math.random()-.5).forEach(o=>{
+ const b=document.createElement("button");
+ b.className="answer";b.textContent=o.v;
+ b.onclick=()=>{
+ if(answered)return;
+ if(o.i!==q[2]){
+ document.getElementById("gameFeedback").textContent="Попробуй ещё раз! 🐝";
+ return;
+ }
+ answered=true;completeLevel(n);
+ document.getElementById("gameFeedback").textContent="Молодец! Ты помог саду! 🌸";
+ box.innerHTML='<button onclick="levels()">➡ Продолжить</button>';
+ };
+ box.appendChild(b);
+ });
+}
+
+function completeLevel(n){
+ const id=save.currentWorld+"-"+n;
+ if(!save.completed.includes(id)){
+ save.completed.push(id);
+ save.coins+=10;save.honey+=5;save.stars++;
+ }
+ persist();
+}
+
+// БОССЫ
+let bossTimer=null,bossTime=30,bossActive=false,bossIndex=0,bossLevel=0;
+const bossQuestions=[
+ ["Что собирают пчёлы?",["Нектар","Камни","Песок"],0],
+ ["Из чего делают соты?",["Воск","Стекло","Пластик"],0],
+ ["Кто главная пчела?",["Матка","Бабочка","Муравей"],0],
+ ["Что производят пчёлы?",["Мёд","Молоко","Сок"],0],
+ ["Что такое опыление?",["Перенос пыльцы","Полёт","Сон"],0]
+];
+
+function stopBoss(){
+ bossActive=false;
+ if(bossTimer){clearInterval(bossTimer);bossTimer=null;}
+}
+
+function startBoss(n){
+ stopBoss();bossLevel=n;bossTime=30;bossIndex=0;bossActive=true;
+ const data=bosses.find(x=>x[0]===n);
+ show("boss");
+ document.getElementById("bossEmoji").textContent=data[2];
+ document.getElementById("bossName").textContent=data[1];
+ document.getElementById("bossFeedback").textContent="Ответь на 5 вопросов за 30 секунд!";
+ showBossQuestion();
+ bossTimer=setInterval(()=>{
+ if(!bossActive)return;
+ bossTime--;
+ document.getElementById("bossTimer").textContent=bossTime;
+ if(bossTime<=0)bossLose();
+ },1000);
+}
+
+function showBossQuestion(){
+ const q=bossQuestions[bossIndex];
+ document.getElementById("bossQuestion").textContent="Вопрос "+(bossIndex+1)+"/5: "+q[0];
+ const box=document.getElementById("bossAnswers");box.innerHTML="";
+ q[1].forEach((v,i)=>{
+ const b=document.createElement("button");
+ b.className="answer";b.textContent=v;
+ b.onclick=()=>{
+ if(!bossActive)return;
+ if(i===q[2]){
+ bossIndex++;
+ if(bossIndex>=5)bossWin();
+ else showBossQuestion();
+ }else{
+ document.getElementById("bossFeedback").textContent="Неверно! Время идёт!";
+ }
+ };
+ box.appendChild(b);
+ });
+}
+
+function bossWin(){
+ if(!bossActive)return;
+ stopBoss();
+ completeLevel(bossLevel);
+ save.coins+=100;save.honey+=50;save.stars+=2;
+ persist();
+ page("🏆 Победа!",'<div class="bee">🎉👑🐝</div><h2>Ты победил!</h2><p>+100 🪙</p><p>+50 🍯</p><button onclick="levels()">Продолжить</button>');
+}
+
+function bossLose(){
+ if(!bossActive)return;
+ stopBoss();
+ page("💔 Время вышло!",`<button onclick="startBoss(${bossLevel})">🔄 Повторить</button><button onclick="levels()">К уровням</button>`);
+}
+
+// МАГАЗИН
+const skins=[
+ ["🐝","Обычная",0],["👑","Королевская",100],
+ ["🌈","Радужная",150],["💎","Кристальная",200],
+ ["🔥","Огненная",300],["❄️","Ледяная",300],
+ ["🌟","Звёздная",400],["🐉","Драконья",500],
+ ["🦄","Единорог",550],["🤖","Робот",650]
+];
+
+function shop(){
+ let html='<h3>🐝 Скины</h3>';
+ skins.forEach(s=>{
+ const owned=save.skins.includes(s[0]);
+ html+=`<div class="item"><div class="bee">${s[0]}</div><b>${s[1]}</b><p>${s[2]} 🪙</p>
+ <button onclick="buySkin('${s[0]}',${s[2]})">${owned?(save.selectedSkin===s[0]?"Выбрано":"Выбрать"):"Купить"}</button></div>`;
+ });
+ page("🛒 Магазин",html);
+}
+
+function buySkin(id,price){
+ if(save.skins.includes(id)){save.selectedSkin=id;}
+ else{
+ if(save.coins<price)return alert("Не хватает монет!");
+ save.coins-=price;save.skins.push(id);save.selectedSkin=id;
+ }
+ persist();shop();
+}
+
+// ЯЙЦА
+function eggs(){
+ page("🥚 Яйца",'<div class="bee">🥚</div><button onclick="hatch(30,0)">Обычное — 30 🪙</button><button onclick="hatch(100,1)">Редкое — 100 🪙</button><button onclick="hatch(300,2)">Легендарное — 300 🪙</button><p>Открыто: '+save.eggs+'</p>');
+}
+
+function hatch(price,type){
+ if(save.coins<price)return alert("Не хватает монет!");
+ const pools=[["🐝","🌸","🍯"],["🌈","💎","🔥","❄️"],["👑","🐉","🌟","🦄"]];
+ const pool=pools[type];
+ const x=pool[Math.floor(Math.random()*pool.length)];
+ save.coins-=price;save.eggs++;
+ if(!save.skins.includes(x))save.skins.push(x);
+ else save.coins+=30;
+ persist();alert("🐝 Получена пчёлка: "+x);eggs();
+}
+
+// УЛЕЙ
+const furniture=[
+ ["🛏️","Кроватка"],["👑","Трон"],["🛋️","Диван"],
+ ["💡","Люстра"],["🧸","Игрушка"],["🎹","Пианино"]
+];
+
+function interior(){
+ page("🏡 Мой улей",'<div class="hive" id="hive"></div><h3>Мебель</h3><div id="myFurniture"></div>');
+ const grid=document.getElementById("hive");
+ for(let i=0;i<9;i++){
+ const slot=document.createElement("div");
+ slot.className="slot";
+ const name=save.placedFurniture[i];
+ const f=furniture.find(x=>x[1]===name);
+ slot.textContent=f?f[0]:"➕";
+ if(name)slot.onclick=()=>{
+ save.placedFurniture.splice(i,1);persist();interior();
+ };
+ grid.appendChild(slot);
+ }
+ const box=document.getElementById("myFurniture");
+ save.furniture.forEach(name=>{
+ const f=furniture.find(x=>x[1]===name);
+ if(!f)return;
+ const b=document.createElement("button");
+ b.textContent=f[0]+" Поставить "+name;
+ b.onclick=()=>{
+ if(save.placedFurniture.length>=9)return alert("Нет места!");
+ if(save.placedFurniture.includes(name))return alert("Уже стоит!");
+ save.placedFurniture.push(name);persist();interior();
+ };
+ box.appendChild(b);
+ });
+}
+
+function buyFurniture(name,price){
+ if(save.furniture.includes(name))return alert("Уже куплено!");
+ if(save.coins<price)return alert("Не хватает монет!");
+ save.coins-=price;save.furniture.push(name);
+ persist();interior();
+}
+
+// ФАБРИКА
+function factory(){
+ page("🏭 Фабрика",'<div class="bee">🏭🍯</div><h3>Уровень '+save.factory+'</h3><p>Производство: '+save.factory*5+' 🍯</p><button onclick="produce()">🍯 Произвести мёд</button><button onclick="upgradeFactory()">⬆️ Улучшить — '+save.factory*150+' 🪙</button>');
+}
+
+function produce(){
+ save.honey+=save.factory*5;persist();factory();
+}
+
+function upgradeFactory(){
+ const price=save.factory*150;
+ if(save.coins<price)return alert("Не хватает монет!");
+ save.coins-=price;save.factory++;persist();factory();
+}
+
+// ПОДАРКИ И ЗАДАНИЯ
+function today(){return new Date().toDateString()}
+
+function gift(){
+ if(save.lastGift===today())return alert("Подарок уже получен!");
+ save.lastGift=today();save.coins+=25;save.honey+=10;save.stars+=2;
+ persist();alert("🎁 +25 монет, +10 мёда, +2 звезды!");
+}
+
+function quests(){
+ page("📅 Задание дня",'<p>Собери 20 мёда!</p><p>'+save.honey+'/20 🍯</p><button onclick="claimQuest()">🎁 Получить 50 монет</button>');
+}
+
+function claimQuest(){
+ if(save.lastQuest===today())return alert("Уже выполнено!");
+ if(save.honey<20)return alert("Нужно 20 мёда!");
+ save.honey-=20;save.coins+=50;save.lastQuest=today();
+ persist();quests();
+}
+
+// ЭНЦИКЛОПЕДИЯ
+function book(){
+ page("📖 Энциклопедия",'<div class="grid">'+
+ skins.map(s=>'<div class="item">'+(save.skins.includes(s[0])?s[0]+" "+s[1]:"❔ Не открыто")+'</div>').join("")+
+ '</div>');
+}
+
+// НАСТРОЙКИ И ПЕРЕНОС
+function settings(){
+ page("⚙️ Настройки",`
+ <div class="item">
+ <h3>💾 Сохранение</h3>
+ <button onclick="exportSave()">📤 Скачать сохранение</button>
+ <button onclick="importSave()">📥 Загрузить сохранение</button>
+ <p>Прогресс хранится на этом устройстве.</p>
+ </div>
+ <div class="item">
+ <h3>🌍 Язык</h3>
+ <button onclick="setLanguage('ru')">🇷🇺 Русский</button>
+ <button onclick="setLanguage('en')">🇬🇧 English</button>
+ </div>
+ <div class="item">
+ <button onclick="resetGame()">🗑️ Сбросить прогресс</button>
+ </div>`);
+}
+
+function setLanguage(lang){
+ save.language=lang;persist();settings();
+}
+
+function exportSave(){
+ const blob=new Blob([JSON.stringify(save,null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;a.download="honey-garden-save.json";
+ a.click();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function importSave(){
+ const input=document.createElement("input");
+ input.type="file";input.accept=".json,application/json";
+ input.onchange=()=>{
+ const file=input.files[0];if(!file)return;
+ const reader=new FileReader();
+ reader.onload=()=>{
+ try{
+ const data=JSON.parse(reader.result);
+ if(!data||!Array.isArray(data.completed)||!Array.isArray(data.skins)||
+ !Array.isArray(data.openedWorlds))throw Error("Invalid save");
+ save={...DEFAULT,...data};
+ persist();home();
+ alert("Сохранение загружено!");
+ }catch(e){alert("Ошибка файла сохранения!");}
+ };
+ reader.readAsText(file);
+ };
+ input.click();
+}
+
+function resetGame(){
+ if(!confirm("Точно удалить весь прогресс?"))return;
+ save={...DEFAULT,completed:[],skins:["🐝"],furniture:[],placedFurniture:[],openedWorlds:[0],usedCodes:[]};
+ persist();home();
+}
+
+// ЗАПУСК
+function startGame(){
+ update();show("menu");
+}
+
+if(document.readyState==="loading"){
+ document.addEventListener("DOMContentLoaded",startGame);
+}else{
+ startGame();
+}
+</script>
+</body>
+</html>
